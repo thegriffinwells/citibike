@@ -1,7 +1,10 @@
 credentials.json
 token.json
 /data/
-scraper/
+__pycache__/
+*.pyc
+.venv/
 node_modules/
 .vercel/
 .vercel
+.claude/
