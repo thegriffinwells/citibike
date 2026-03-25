@@ -233,6 +233,8 @@
            Mobile: sidebar → bottom sheet
            ════════════════════════════════════════════ */
         @media (max-width: 768px) {
+            :root { --sheet-peek: 220px; }
+
             .sidebar {
                 top: auto; bottom: 0; left: 0; right: 0;
                 width: 100%; height: 80dvh;
@@ -286,7 +288,7 @@
 </head>
 <body>
     <div class="sidebar" id="sidebar">
-        <div class="sheet-handle" onclick="toggleSidebar()"><div class="sheet-handle-bar"></div></div>
+        <div class="sheet-handle" id="sheet-handle"><div class="sheet-handle-bar"></div></div>
         <div class="header">
             <div>
                 <h1>Citibike Rides</h1>

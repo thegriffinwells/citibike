@@ -29,7 +29,7 @@ const MONTH_ABBR = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct',
 // ═══════════════ State ═══════════════
 let map, deckOverlay;
 let rideData = [];
-let pathData = [], tripsData = [], focusMarkerData = [];
+let pathData = [], tripsData = [], focusMarkerData = [], stationData = [];
 let allYears = new Set(), activeYear = null;
 let animating = true, animFrameId = null, userPaused = false;
 let virtualList = null;
@@ -206,6 +206,24 @@ function prepareLayerData(rides) {
     }
 }
 
+// ═══════════════ Station Dots ═══════════════
+function prepareStationData(rides) {
+    const map = new Map();
+    for (const r of rides) {
+        if (r.origin_lat && r.start_station) {
+            const k = `${r.origin_lat.toFixed(5)},${r.origin_lng.toFixed(5)}`;
+            if (!map.has(k)) map.set(k, { position: [r.origin_lng, r.origin_lat], count: 0 });
+            map.get(k).count++;
+        }
+        if (r.dest_lat && r.end_station) {
+            const k = `${r.dest_lat.toFixed(5)},${r.dest_lng.toFixed(5)}`;
+            if (!map.has(k)) map.set(k, { position: [r.dest_lng, r.dest_lat], count: 0 });
+            map.get(k).count++;
+        }
+    }
+    stationData = [...map.values()];
+}
+
 // ═══════════════ Constants ═══════════════
 const NYC_BOUNDS = [[-74.35, 40.45], [-73.65, 40.95]];
 const IS_MOBILE = () => window.innerWidth <= 768;
@@ -243,6 +261,19 @@ function initMap() {
 // ═══════════════ Layer Updates ═══════════════
 function updateLayers() {
     const layers = [];
+
+    // Station dots (behind everything)
+    layers.push(new deck.ScatterplotLayer({
+        id: 'stations',
+        data: stationData,
+        getPosition: d => d.position,
+        getFillColor: focusedRideIdx >= 0 ? [255, 255, 255, 15] : [255, 255, 255, 70],
+        getRadius: 2.5,
+        radiusUnits: 'pixels',
+        radiusMinPixels: 1.5,
+        radiusMaxPixels: 4,
+        updateTriggers: { getFillColor: focusedRideIdx },
+    }));
 
     layers.push(new deck.PathLayer({
         id: 'routes',
@@ -338,6 +369,7 @@ function recomputeAndDraw() {
     });
 
     prepareLayerData(filtered);
+    prepareStationData(filtered);
     renderStats();
     renderYearFilters();
     renderRideList();
@@ -537,8 +569,8 @@ function renderStats() {
     });
 
     document.getElementById('stats').innerHTML = `
-        <div class="stat"><div class="stat-value">${filtered.length.toLocaleString()}</div><div class="stat-label">Rides</div></div>
-        <div class="stat"><div class="stat-value">${stations.size}</div><div class="stat-label">Stations</div></div>
+        <div class="stat" onclick="openSheet()" style="cursor:pointer"><div class="stat-value">${filtered.length.toLocaleString()}</div><div class="stat-label">Rides</div></div>
+        <div class="stat" onclick="openSheet()" style="cursor:pointer"><div class="stat-value">${stations.size}</div><div class="stat-label">Stations</div></div>
         <div class="stat"><div class="stat-value">${[...allYears].length}</div><div class="stat-label">Years</div></div>
         <div class="stat"><div class="stat-value">$${Math.round(totalCost).toLocaleString()}</div><div class="stat-label">Spent</div></div>
     `;
@@ -633,8 +665,58 @@ function closeSidebar() {
     }
 }
 
+function openSheet() {
+    if (IS_MOBILE()) document.getElementById('sidebar').classList.add('expanded');
+}
+
+// ═══════════════ Sheet Drag (mobile) ═══════════════
+function initSheetDrag() {
+    const sidebar = document.getElementById('sidebar');
+    const handle = document.getElementById('sheet-handle');
+    if (!handle) return;
+
+    let startY, isDragging = false;
+
+    handle.addEventListener('touchstart', e => {
+        e.preventDefault();
+        startY = e.touches[0].clientY;
+        isDragging = true;
+        sidebar.style.transition = 'none';
+    }, { passive: false });
+
+    document.addEventListener('touchmove', e => {
+        if (!isDragging) return;
+        const dy = e.touches[0].clientY - startY;
+        const isExpanded = sidebar.classList.contains('expanded');
+        const sheetH = sidebar.offsetHeight;
+        const peek = 220; // matches mobile --sheet-peek
+        const base = isExpanded ? 0 : (sheetH - peek);
+        const clamped = Math.max(0, Math.min(sheetH - peek, base + dy));
+        sidebar.style.transform = `translateY(${clamped}px)`;
+    }, { passive: true });
+
+    document.addEventListener('touchend', e => {
+        if (!isDragging) return;
+        isDragging = false;
+        const endY = e.changedTouches[0]?.clientY ?? startY;
+        const dy = endY - startY;
+
+        sidebar.style.transition = '';
+        sidebar.style.transform = '';
+
+        if (Math.abs(dy) < 10) {
+            sidebar.classList.toggle('expanded');
+        } else if (dy > 60) {
+            sidebar.classList.remove('expanded');
+        } else if (dy < -60) {
+            sidebar.classList.add('expanded');
+        }
+    }, { passive: true });
+}
+
 // ═══════════════ Boot ═══════════════
 initMap();
+initSheetDrag();
 const _dataPromise = fetchRideData();
 
 map.on('load', async () => {
