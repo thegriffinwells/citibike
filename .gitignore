@@ -4,3 +4,4 @@ token.json
 scraper/
 node_modules/
 .vercel/
+.vercel

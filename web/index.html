@@ -4,117 +4,245 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Griffin's Citibike Rides</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4/dist/maplibre-gl.css" />
     <style>
+        :root {
+            --bg: #0a0a0a;
+            --surface: rgba(12, 12, 12, 0.95);
+            --elevated: rgba(255, 255, 255, 0.04);
+            --hover: rgba(255, 255, 255, 0.06);
+            --text: rgba(255, 255, 255, 0.9);
+            --text-2: rgba(255, 255, 255, 0.5);
+            --text-3: rgba(255, 255, 255, 0.25);
+            --border: rgba(255, 255, 255, 0.06);
+            --cold: #4a00e0;
+            --hot: #ffcc00;
+            --sidebar: 320px;
+        }
+
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0a0a0a; color: #fff; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif;
+            background: var(--bg); color: var(--text); overflow: hidden;
+        }
+
         #map { width: 100%; height: 100vh; }
 
+        /* ── Sidebar ── */
         .sidebar {
             position: absolute; top: 0; left: 0; z-index: 1000;
-            width: 340px; height: 100vh; background: rgba(10, 10, 10, 0.92);
-            backdrop-filter: blur(20px); border-right: 1px solid rgba(255,255,255,0.1);
-            overflow-y: auto; transition: transform 0.3s ease;
+            width: var(--sidebar); height: 100vh;
+            background: var(--surface);
+            backdrop-filter: blur(24px);
+            border-right: 1px solid var(--border);
+            display: flex; flex-direction: column;
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
-        .sidebar.collapsed { transform: translateX(-340px); }
+        .sidebar.collapsed { transform: translateX(calc(-1 * var(--sidebar))); }
 
         .sidebar-toggle {
             position: absolute; top: 16px; z-index: 1001;
-            left: 340px; background: rgba(10,10,10,0.9); border: 1px solid rgba(255,255,255,0.1);
-            color: #fff; padding: 8px 12px; cursor: pointer; border-radius: 0 8px 8px 0;
-            font-size: 16px; transition: left 0.3s ease;
+            left: var(--sidebar);
+            background: var(--surface); border: 1px solid var(--border);
+            color: var(--text-2); padding: 8px 10px; cursor: pointer;
+            border-radius: 0 8px 8px 0; font-size: 14px;
+            backdrop-filter: blur(24px);
+            transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1), color 0.2s;
         }
+        .sidebar-toggle:hover { color: var(--text); }
         .sidebar.collapsed + .sidebar-toggle { left: 0; }
 
+        /* ── Header ── */
         .header {
-            padding: 24px 20px 16px;
-            border-bottom: 1px solid rgba(255,255,255,0.08);
+            padding: 20px 20px 16px;
+            border-bottom: 1px solid var(--border);
+            display: flex; justify-content: space-between; align-items: flex-start;
+            flex-shrink: 0;
         }
-        .header h1 { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
-        .header .subtitle { font-size: 13px; color: rgba(255,255,255,0.5); }
+        .header h1 { font-size: 18px; font-weight: 600; letter-spacing: -0.3px; }
+        .header .subtitle { font-size: 12px; color: var(--text-2); margin-top: 2px; }
+        .icon-btn {
+            width: 30px; height: 30px; border-radius: 7px;
+            background: var(--elevated); border: 1px solid var(--border);
+            color: var(--text-2); cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 14px; transition: all 0.2s; flex-shrink: 0;
+        }
+        .icon-btn:hover { background: var(--hover); color: var(--text); }
 
+        /* ── Stats ── */
         .stats {
-            display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
-            padding: 16px 20px; border-bottom: 1px solid rgba(255,255,255,0.08);
+            display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px;
+            padding: 12px 20px;
+            border-bottom: 1px solid var(--border);
+            flex-shrink: 0;
         }
-        .stat { background: rgba(255,255,255,0.05); border-radius: 10px; padding: 12px; }
-        .stat-value { font-size: 24px; font-weight: 700; color: #3b82f6; }
-        .stat-label { font-size: 11px; color: rgba(255,255,255,0.5); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 2px; }
+        .stat {
+            background: var(--elevated); border-radius: 8px;
+            padding: 8px 10px; text-align: center;
+        }
+        .stat-value {
+            font-size: 18px; font-weight: 700;
+            color: #fff;
+        }
+        .stat-label {
+            font-size: 9px; color: var(--text-3);
+            text-transform: uppercase; letter-spacing: 0.8px; margin-top: 1px;
+        }
 
+        /* ── Filters ── */
         .filters {
-            padding: 16px 20px; border-bottom: 1px solid rgba(255,255,255,0.08);
+            padding: 10px 20px;
+            border-bottom: 1px solid var(--border);
+            flex-shrink: 0;
         }
-        .filters h3 { font-size: 13px; color: rgba(255,255,255,0.5); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px; }
         .filter-btn {
-            display: inline-block; padding: 6px 12px; margin: 3px;
-            background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.1);
-            border-radius: 20px; color: #fff; font-size: 12px; cursor: pointer;
-            transition: all 0.2s;
+            display: inline-block; padding: 4px 11px; margin: 2px;
+            background: var(--elevated); border: 1px solid var(--border);
+            border-radius: 14px; color: var(--text-2);
+            font-size: 12px; cursor: pointer;
+            transition: all 0.2s; font-weight: 500;
         }
-        .filter-btn:hover, .filter-btn.active { background: #3b82f6; border-color: #3b82f6; }
+        .filter-btn:hover {
+            background: rgba(74, 0, 224, 0.15);
+            border-color: rgba(74, 0, 224, 0.3);
+            color: var(--text);
+        }
+        .filter-btn.active {
+            background: linear-gradient(135deg, rgba(230, 50, 20, 0.3), rgba(250, 50, 160, 0.2));
+            border-color: rgba(250, 50, 160, 0.4);
+            color: #fff;
+        }
 
-        .ride-list { padding: 8px 0; }
+        /* ── Ride list (virtual-scrolled) ── */
+        .ride-list {
+            flex: 1; overflow-y: auto; position: relative;
+        }
+        .ride-list::-webkit-scrollbar { width: 4px; }
+        .ride-list::-webkit-scrollbar-track { background: transparent; }
+        .ride-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 2px; }
+        .ride-list::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.15); }
+
         .ride-item {
-            padding: 12px 20px; cursor: pointer;
-            border-bottom: 1px solid rgba(255,255,255,0.04);
-            transition: background 0.2s;
+            padding: 8px 16px 8px 13px;
+            cursor: pointer;
+            border-left: 3px solid transparent;
+            transition: background 0.15s;
+            display: flex; flex-direction: column; justify-content: center;
+            box-sizing: border-box;
         }
-        .ride-item:hover { background: rgba(255,255,255,0.05); }
-        .ride-item.active { background: rgba(59, 130, 246, 0.15); border-left: 3px solid #3b82f6; }
-        .ride-date { font-size: 11px; color: rgba(255,255,255,0.4); margin-bottom: 4px; }
-        .ride-stations { font-size: 13px; line-height: 1.4; }
-        .ride-stations .arrow { color: #3b82f6; margin: 0 6px; }
-        .ride-bike { font-size: 11px; color: rgba(255,255,255,0.3); margin-top: 3px; }
+        .ride-item:hover { background: var(--hover); }
+        .ride-item.active { background: rgba(255, 102, 0, 0.08); }
+        .ride-date {
+            font-size: 10px; color: var(--text-3);
+            margin-bottom: 3px; font-weight: 500; letter-spacing: 0.2px;
+        }
+        .ride-route { font-size: 12px; line-height: 1.35; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .ride-route .station { color: var(--text); }
+        .ride-route .arrow { margin: 0 4px; font-weight: 700; }
 
-        .share-banner {
-            padding: 16px 20px; background: rgba(59, 130, 246, 0.1);
-            border-bottom: 1px solid rgba(255,255,255,0.08);
+        /* ── Legend ── */
+        .legend {
+            position: absolute; bottom: 24px; right: 16px; z-index: 1000;
+            background: rgba(10, 10, 10, 0.85);
+            padding: 10px 14px; border-radius: 10px;
+            border: 1px solid var(--border);
+            backdrop-filter: blur(16px);
         }
-        .share-btn {
-            width: 100%; padding: 10px; background: #3b82f6; color: #fff;
-            border: none; border-radius: 8px; font-size: 14px; font-weight: 600;
-            cursor: pointer; transition: background 0.2s;
+        .legend-title {
+            font-size: 9px; color: var(--text-3);
+            text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 6px;
         }
-        .share-btn:hover { background: #2563eb; }
+        .legend-gradient {
+            width: 140px; height: 8px; border-radius: 4px;
+            background: linear-gradient(to right, #320800, #8c1900, #c8230a, #e6233c, #f52d8c, #ff8c32, #ffdc78);
+        }
+        .legend-labels {
+            display: flex; justify-content: space-between;
+            font-size: 9px; color: var(--text-2); margin-top: 4px;
+        }
 
-        /* Custom markers */
-        .start-marker {
-            background: #22c55e; width: 12px; height: 12px; border-radius: 50%;
-            border: 2px solid #fff; box-shadow: 0 0 6px rgba(34,197,94,0.5);
+        /* ── Map controls ── */
+        .map-ctrls {
+            position: absolute; top: 96px; right: 10px; z-index: 1000;
+            display: flex; flex-direction: column; gap: 4px;
         }
-        .end-marker {
-            background: #ef4444; width: 12px; height: 12px; border-radius: 50%;
-            border: 2px solid #fff; box-shadow: 0 0 6px rgba(239,68,68,0.5);
+        .map-btn {
+            width: 30px; height: 30px; border-radius: 4px;
+            background: rgba(10, 10, 10, 0.85);
+            border: 1px solid var(--border);
+            color: var(--text-2); cursor: pointer;
+            font-size: 11px; font-weight: 600;
+            display: flex; align-items: center; justify-content: center;
+            backdrop-filter: blur(16px); transition: all 0.2s;
         }
+        .map-btn:hover { color: var(--text); background: rgba(20,20,20,0.9); }
 
-        .leaflet-popup-content-wrapper {
-            background: rgba(20, 20, 20, 0.95) !important; color: #fff !important;
-            border-radius: 10px !important; border: 1px solid rgba(255,255,255,0.1) !important;
+        /* ── MapLibre overrides ── */
+        .maplibregl-ctrl-group {
+            background: rgba(10, 10, 10, 0.85) !important;
+            border: 1px solid var(--border) !important;
+            border-radius: 4px !important;
+            box-shadow: none !important;
         }
-        .leaflet-popup-tip { background: rgba(20, 20, 20, 0.95) !important; }
-        .leaflet-popup-content { font-family: -apple-system, sans-serif !important; font-size: 13px !important; }
+        .maplibregl-ctrl-group button {
+            width: 30px !important; height: 30px !important;
+        }
+        .maplibregl-ctrl-group button + button {
+            border-top: 1px solid var(--border) !important;
+        }
+        .maplibregl-ctrl-group button .maplibregl-ctrl-icon {
+            filter: invert(1) opacity(0.5);
+        }
+        .maplibregl-ctrl-group button:hover .maplibregl-ctrl-icon {
+            filter: invert(1) opacity(0.8);
+        }
+        .maplibregl-ctrl-attrib {
+            background: rgba(0,0,0,0.5) !important;
+        }
+        .maplibregl-ctrl-attrib,
+        .maplibregl-ctrl-attrib a {
+            color: rgba(255,255,255,0.3) !important;
+            font-size: 10px !important;
+        }
     </style>
 </head>
 <body>
     <div class="sidebar" id="sidebar">
         <div class="header">
-            <h1>Griffin's Citibike Rides</h1>
-            <div class="subtitle">NYC bike ride archive</div>
+            <div>
+                <h1>Citibike Rides</h1>
+                <div class="subtitle">NYC ride archive</div>
+            </div>
+            <button class="icon-btn" id="share-btn" onclick="shareMap()" title="Share">&#8599;</button>
         </div>
         <div class="stats" id="stats"></div>
         <div class="filters">
-            <h3>Filter by year</h3>
             <div id="year-filters"></div>
-        </div>
-        <div class="share-banner">
-            <button class="share-btn" onclick="shareMap()">Share This Map</button>
         </div>
         <div class="ride-list" id="ride-list"></div>
     </div>
     <button class="sidebar-toggle" id="sidebar-toggle" onclick="toggleSidebar()">&#9776;</button>
+
     <div id="map"></div>
 
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <div class="map-ctrls">
+        <button class="map-btn" id="anim-toggle" onclick="toggleAnimation()" title="Toggle animation">Pause</button>
+        <button class="map-btn" onclick="resetView()" title="Reset view">&#x21BA;</button>
+    </div>
+
+    <div class="legend">
+        <div class="legend-title">Ride frequency</div>
+        <div class="legend-gradient"></div>
+        <div class="legend-labels">
+            <span>Rare</span>
+            <span>Frequent</span>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/maplibre-gl@4/dist/maplibre-gl.js"></script>
+    <script src="https://unpkg.com/deck.gl@9/dist.min.js"></script>
     <script src="https://unpkg.com/@mapbox/polyline@1.2.1/src/polyline.js"></script>
     <script src="app.js"></script>
 </body>
