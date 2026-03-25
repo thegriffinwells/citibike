@@ -1,6 +1,6 @@
 credentials.json
 token.json
-data/
+/data/
 scraper/
 node_modules/
 .vercel/
