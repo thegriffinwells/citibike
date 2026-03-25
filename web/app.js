@@ -679,23 +679,34 @@ function initSheetDrag() {
 
     let startY, isDragging = false;
 
-    handle.addEventListener('touchstart', e => {
-        e.preventDefault();
-        startY = e.touches[0].clientY;
-        isDragging = true;
-        sidebar.style.transition = 'none';
-    }, { passive: false });
+    // Click fallback — always works even if touch events fail
+    handle.addEventListener('click', () => {
+        toggleSidebar();
+    });
+
+    // Touch drag on handle + header area
+    const dragZone = [handle, sidebar.querySelector('.header')];
+    dragZone.forEach(el => {
+        if (!el) return;
+        el.addEventListener('touchstart', e => {
+            if (!IS_MOBILE()) return;
+            startY = e.touches[0].clientY;
+            isDragging = true;
+            sidebar.style.transition = 'none';
+        }, { passive: true });
+    });
 
     document.addEventListener('touchmove', e => {
         if (!isDragging) return;
+        e.preventDefault();
         const dy = e.touches[0].clientY - startY;
         const isExpanded = sidebar.classList.contains('expanded');
         const sheetH = sidebar.offsetHeight;
-        const peek = 130; // matches mobile --sheet-peek
+        const peek = 160;
         const base = isExpanded ? 0 : (sheetH - peek);
         const clamped = Math.max(0, Math.min(sheetH - peek, base + dy));
         sidebar.style.transform = `translateY(${clamped}px)`;
-    }, { passive: true });
+    }, { passive: false });
 
     document.addEventListener('touchend', e => {
         if (!isDragging) return;
@@ -707,10 +718,11 @@ function initSheetDrag() {
         sidebar.style.transform = '';
 
         if (Math.abs(dy) < 10) {
-            sidebar.classList.toggle('expanded');
-        } else if (dy > 60) {
+            // Small movement = tap, but click handler covers this
+            return;
+        } else if (dy > 50) {
             sidebar.classList.remove('expanded');
-        } else if (dy < -60) {
+        } else if (dy < -50) {
             sidebar.classList.add('expanded');
         }
         updateLegendVisibility();
