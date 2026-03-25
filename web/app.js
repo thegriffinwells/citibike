@@ -262,19 +262,6 @@ function initMap() {
 function updateLayers() {
     const layers = [];
 
-    // Station dots (behind everything)
-    layers.push(new deck.ScatterplotLayer({
-        id: 'stations',
-        data: stationData,
-        getPosition: d => d.position,
-        getFillColor: focusedRideIdx >= 0 ? [255, 255, 255, 15] : [255, 255, 255, 70],
-        getRadius: 2.5,
-        radiusUnits: 'pixels',
-        radiusMinPixels: 1.5,
-        radiusMaxPixels: 4,
-        updateTriggers: { getFillColor: focusedRideIdx },
-    }));
-
     layers.push(new deck.PathLayer({
         id: 'routes',
         data: pathData,
