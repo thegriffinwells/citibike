@@ -1,0 +1,49 @@
+{
+  "_note": "Sample output from fetch_gmail.py → data/rides.json. Each ride is one array entry.",
+  "individual_ride_example": {
+    "message_id": "19d1df2a639e7dc8",
+    "ride_date": "MARCH 23, 2026",
+    "ride_time": "11:22 PM",
+    "start_station": "Bushwick Ave & Powers St",
+    "end_station": "MacDonough St & Marcy Ave",
+    "start_time": "11:22 pm",
+    "end_time": "11:34 pm",
+    "origin_lat": 40.71248,
+    "origin_lng": -73.941,
+    "dest_lat": 40.68078,
+    "dest_lng": -73.94613,
+    "polyline": "_tnwFfrhbMZBz@]Xd@DhCHhBJxBJtBN|A...(encoded polyline)",
+    "bike_number": "243-5337",
+    "total_charged": "$0.00",
+    "receipt_number": "2199103011534974348",
+    "type": "individual",
+    "source": "citibike"
+  },
+  "daily_digest_ride_example": {
+    "message_id": "abc123",
+    "subject": "Your receipt for rides on March 20",
+    "email_date": "Fri, 21 Mar 2026 10:00:00 +0000",
+    "type": "daily_digest",
+    "source": "lyft",
+    "ride_date": "March 20, 2026",
+    "ride_time": "8:15 AM",
+    "total_charged": "$2.50",
+    "start_time": "8:15 AM",
+    "end_time": "8:32 AM",
+    "start_station": "",
+    "end_station": "",
+    "origin_lat": null,
+    "origin_lng": null,
+    "dest_lat": null,
+    "dest_lng": null,
+    "polyline": "",
+    "_note": "Digest rides have no station/location data. Run extrapolate_stations.py to fill gaps."
+  },
+  "intermediate_files": {
+    "data/citibike_message_ids.json": "Array of [message_id, subject, date] tuples from Gmail search",
+    "data/lyft_message_ids.json": "Same format, from Lyft sender",
+    "data/stations.json": "GBFS station data: [{id, name, lat, lon, cap}, ...] used by extrapolate_stations.py",
+    "data/batch*_rides.json": "Intermediate checkpoint files from earlier batch processing (can be ignored)",
+    "data/rides.json": "Final combined output — all parsed rides in one array"
+  }
+}
