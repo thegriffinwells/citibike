@@ -31,7 +31,7 @@ let map, deckOverlay;
 let rideData = [];
 let pathData = [], tripsData = [], focusMarkerData = [];
 let allYears = new Set(), activeYear = null;
-let animating = true, animFrameId = null;
+let animating = true, animFrameId = null, userPaused = false;
 let virtualList = null;
 let focusedRideIdx = -1;
 let deckClickHandled = false;
@@ -428,23 +428,27 @@ function animate() {
     animFrameId = requestAnimationFrame(animate);
 }
 
+const PAUSE_ICON = '<svg width="10" height="12" viewBox="0 0 10 12"><rect x="0" y="0" width="3" height="12" fill="currentColor"/><rect x="7" y="0" width="3" height="12" fill="currentColor"/></svg>';
+const PLAY_ICON = '<svg width="10" height="12" viewBox="0 0 10 12"><polygon points="0,0 10,6 0,12" fill="currentColor"/></svg>';
+
 function toggleAnimation() {
     const btn = document.getElementById('anim-toggle');
     if (animating) {
         stopAnimation();
-        btn.textContent = 'Play';
+        userPaused = true;
+        btn.innerHTML = PLAY_ICON;
         updateLayers();
     } else {
         startAnimation();
-        btn.textContent = 'Pause';
+        userPaused = false;
+        btn.innerHTML = PAUSE_ICON;
     }
 }
 
 document.addEventListener('visibilitychange', () => {
-    const btn = document.getElementById('anim-toggle');
     if (document.hidden) {
         stopAnimation();
-    } else if (btn && btn.textContent === 'Pause') {
+    } else if (!userPaused) {
         startAnimation();
     }
 });
@@ -620,14 +624,12 @@ function toggleSidebar() {
     }
 }
 
-function shareMap() {
-    const text = `${rideData.length} Citibike rides across NYC`;
-    if (navigator.share) {
-        navigator.share({ title: "Griffin's Citibike Rides", text, url: location.href });
+function closeSidebar() {
+    const sidebar = document.getElementById('sidebar');
+    if (IS_MOBILE()) {
+        sidebar.classList.remove('expanded');
     } else {
-        navigator.clipboard.writeText(location.href);
-        const btn = document.getElementById('share-btn');
-        if (btn) { btn.title = 'Copied!'; setTimeout(() => btn.title = 'Share', 2000); }
+        sidebar.classList.add('collapsed');
     }
 }
 
