@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Griffin's Citibike Rides</title>
     <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4/dist/maplibre-gl.css" />
     <style>
@@ -15,9 +15,8 @@
             --text-2: rgba(255, 255, 255, 0.5);
             --text-3: rgba(255, 255, 255, 0.25);
             --border: rgba(255, 255, 255, 0.06);
-            --cold: #4a00e0;
-            --hot: #ffcc00;
             --sidebar: 320px;
+            --sheet-peek: 140px;
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -25,16 +24,32 @@
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif;
             background: var(--bg); color: var(--text); overflow: hidden;
+            -webkit-text-size-adjust: 100%;
         }
 
-        #map { width: 100%; height: 100vh; }
+        #map { width: 100%; height: 100vh; height: 100dvh; }
 
-        /* ── Sidebar ── */
+        /* ── Sheet handle (mobile only) ── */
+        .sheet-handle {
+            display: none;
+            justify-content: center;
+            padding: 10px 0 6px;
+            cursor: pointer;
+            flex-shrink: 0;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .sheet-handle-bar {
+            width: 36px; height: 4px;
+            border-radius: 2px;
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        /* ── Sidebar (desktop) ── */
         .sidebar {
             position: absolute; top: 0; left: 0; z-index: 1000;
             width: var(--sidebar); height: 100vh;
             background: var(--surface);
-            backdrop-filter: blur(24px);
+            backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
             border-right: 1px solid var(--border);
             display: flex; flex-direction: column;
             transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -47,7 +62,7 @@
             background: var(--surface); border: 1px solid var(--border);
             color: var(--text-2); padding: 8px 10px; cursor: pointer;
             border-radius: 0 8px 8px 0; font-size: 14px;
-            backdrop-filter: blur(24px);
+            backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
             transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1), color 0.2s;
         }
         .sidebar-toggle:hover { color: var(--text); }
@@ -82,10 +97,7 @@
             background: var(--elevated); border-radius: 8px;
             padding: 8px 10px; text-align: center;
         }
-        .stat-value {
-            font-size: 18px; font-weight: 700;
-            color: #fff;
-        }
+        .stat-value { font-size: 18px; font-weight: 700; color: #fff; }
         .stat-label {
             font-size: 9px; color: var(--text-3);
             text-transform: uppercase; letter-spacing: 0.8px; margin-top: 1px;
@@ -115,9 +127,10 @@
             color: #fff;
         }
 
-        /* ── Ride list (virtual-scrolled) ── */
+        /* ── Ride list ── */
         .ride-list {
             flex: 1; overflow-y: auto; position: relative;
+            -webkit-overflow-scrolling: touch;
         }
         .ride-list::-webkit-scrollbar { width: 4px; }
         .ride-list::-webkit-scrollbar-track { background: transparent; }
@@ -148,7 +161,7 @@
             background: rgba(10, 10, 10, 0.85);
             padding: 10px 14px; border-radius: 10px;
             border: 1px solid var(--border);
-            backdrop-filter: blur(16px);
+            backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
         }
         .legend-title {
             font-size: 9px; color: var(--text-3);
@@ -175,7 +188,8 @@
             color: var(--text-2); cursor: pointer;
             font-size: 11px; font-weight: 600;
             display: flex; align-items: center; justify-content: center;
-            backdrop-filter: blur(16px); transition: all 0.2s;
+            backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+            transition: all 0.2s;
         }
         .map-btn:hover { color: var(--text); background: rgba(20,20,20,0.9); }
 
@@ -206,10 +220,62 @@
             color: rgba(255,255,255,0.3) !important;
             font-size: 10px !important;
         }
+
+        /* ════════════════════════════════════════════
+           Mobile: sidebar → bottom sheet
+           ════════════════════════════════════════════ */
+        @media (max-width: 768px) {
+            .sidebar {
+                top: auto; bottom: 0; left: 0; right: 0;
+                width: 100%; height: 85dvh;
+                border-right: none;
+                border-top: 1px solid var(--border);
+                border-radius: 16px 16px 0 0;
+                transform: translateY(calc(100% - var(--sheet-peek)));
+                padding-bottom: env(safe-area-inset-bottom, 0px);
+                box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.5);
+            }
+            .sidebar.collapsed {
+                transform: translateY(calc(100% - var(--sheet-peek)));
+            }
+            .sidebar.expanded {
+                transform: translateY(0);
+            }
+
+            .sidebar-toggle { display: none; }
+            .sheet-handle { display: flex; }
+
+            .header { padding: 8px 16px 10px; }
+            .header h1 { font-size: 16px; }
+
+            .stats { padding: 8px 16px; gap: 4px; }
+            .stat { padding: 6px 4px; }
+            .stat-value { font-size: 15px; }
+            .stat-label { font-size: 8px; }
+
+            .filters { padding: 8px 16px; }
+
+            .legend {
+                bottom: calc(var(--sheet-peek) + 12px);
+                right: 10px;
+            }
+
+            .map-ctrls {
+                top: 10px;
+                right: auto;
+                left: 10px;
+            }
+
+            .maplibregl-ctrl-top-right {
+                top: 10px !important;
+                right: 10px !important;
+            }
+        }
     </style>
 </head>
 <body>
     <div class="sidebar" id="sidebar">
+        <div class="sheet-handle" onclick="toggleSidebar()"><div class="sheet-handle-bar"></div></div>
         <div class="header">
             <div>
                 <h1>Citibike Rides</h1>

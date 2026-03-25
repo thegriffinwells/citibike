@@ -206,6 +206,10 @@ function prepareLayerData(rides) {
     }
 }
 
+// ═══════════════ Constants ═══════════════
+const NYC_BOUNDS = [[-74.35, 40.45], [-73.65, 40.95]];
+const IS_MOBILE = () => window.innerWidth <= 768;
+
 // ═══════════════ Map + deck.gl Setup ═══════════════
 function initMap() {
     map = new maplibregl.Map({
@@ -214,6 +218,10 @@ function initMap() {
         center: [-73.955, 40.695],
         zoom: 13,
         attributionControl: false,
+        maxPitch: 0,
+        dragRotate: false,
+        touchPitch: false,
+        maxBounds: NYC_BOUNDS,
     });
 
     map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
@@ -228,6 +236,7 @@ function initMap() {
             return;
         }
         if (focusedRideIdx >= 0) unfocusRide();
+        if (IS_MOBILE()) document.getElementById('sidebar').classList.remove('expanded');
     });
 }
 
@@ -358,6 +367,11 @@ function filterYear(year) {
 function focusRide(globalIdx) {
     const ride = rideData[globalIdx];
     if (!ride || !ride.origin_lat) return;
+
+    // Validate coordinates are in NYC area — skip bad data
+    const inNYC = (lat, lng) => lat > 40.45 && lat < 40.95 && lng > -74.35 && lng < -73.65;
+    if (!inNYC(ride.origin_lat, ride.origin_lng) || !inNYC(ride.dest_lat, ride.dest_lng)) return;
+
     focusedRideIdx = globalIdx;
 
     focusMarkerData = [
@@ -367,11 +381,14 @@ function focusRide(globalIdx) {
 
     updateLayers();
 
+    const padding = IS_MOBILE()
+        ? { top: 40, bottom: 160, left: 20, right: 20 }
+        : 80;
     const bounds = new maplibregl.LngLatBounds(
         [ride.origin_lng, ride.origin_lat],
         [ride.dest_lng, ride.dest_lat]
     );
-    map.fitBounds(bounds, { padding: 80, duration: 600 });
+    map.fitBounds(bounds, { padding, duration: 600, maxZoom: 16 });
 
     const filtered = getFilteredRides();
     const filteredIdx = filtered.indexOf(ride);
@@ -379,6 +396,8 @@ function focusRide(globalIdx) {
         virtualList.scrollTo(filteredIdx);
         virtualList.setActive(filteredIdx);
     }
+
+    if (IS_MOBILE()) document.getElementById('sidebar').classList.remove('expanded');
 }
 
 function unfocusRide() {
@@ -580,7 +599,10 @@ function fitBounds() {
     });
 
     if (hasPoints) {
-        map.fitBounds([[west, south], [east, north]], { padding: 40, duration: 0 });
+        const padding = IS_MOBILE()
+            ? { top: 20, bottom: 160, left: 20, right: 20 }
+            : 40;
+        map.fitBounds([[west, south], [east, north]], { padding, duration: 0, maxZoom: 16 });
     }
 }
 
@@ -590,7 +612,12 @@ function resetView() {
 }
 
 function toggleSidebar() {
-    document.getElementById('sidebar').classList.toggle('collapsed');
+    const sidebar = document.getElementById('sidebar');
+    if (IS_MOBILE()) {
+        sidebar.classList.toggle('expanded');
+    } else {
+        sidebar.classList.toggle('collapsed');
+    }
 }
 
 function shareMap() {
