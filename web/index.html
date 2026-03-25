@@ -111,7 +111,11 @@
             padding: 10px 20px;
             border-bottom: 1px solid var(--border);
             flex-shrink: 0;
+            white-space: nowrap;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
         }
+        .filters::-webkit-scrollbar { display: none; }
         .filter-btn {
             display: inline-block; padding: 4px 11px; margin: 2px;
             background: var(--elevated); border: 1px solid var(--border);
@@ -168,6 +172,7 @@
             padding: 10px 14px; border-radius: 10px;
             border: 1px solid var(--border);
             backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+            transition: opacity 0.3s;
         }
         .legend-title {
             font-size: 9px; color: var(--text-3);
@@ -233,11 +238,11 @@
            Mobile: sidebar → bottom sheet
            ════════════════════════════════════════════ */
         @media (max-width: 768px) {
-            :root { --sheet-peek: 220px; }
+            :root { --sheet-peek: 130px; }
 
             .sidebar {
                 top: auto; bottom: 0; left: 0; right: 0;
-                width: 100%; height: 80dvh;
+                width: 100%; height: 85dvh;
                 border-right: none;
                 border-top: 1px solid var(--border);
                 border-radius: 16px 16px 0 0;
@@ -252,35 +257,42 @@
             }
 
             .sidebar-toggle { display: none; }
-            .sheet-handle { display: flex; }
+            .sheet-handle { display: flex; padding: 8px 0 4px; }
 
-            .header { padding: 4px 16px 10px; }
-            .header h1 { font-size: 16px; }
+            .header { padding: 2px 16px 8px; }
+            .header h1 { font-size: 15px; }
+            .header .subtitle { display: none; }
 
-            .stats { padding: 8px 16px; gap: 4px; }
-            .stat { padding: 6px 4px; }
-            .stat-value { font-size: 15px; }
-            .stat-label { font-size: 8px; }
+            .stats { padding: 6px 16px; gap: 4px; }
+            .stat { padding: 4px 4px; }
+            .stat-value { font-size: 14px; }
+            .stat-label { font-size: 7px; }
 
-            .filters { padding: 8px 16px; }
+            .filters { padding: 6px 16px; }
 
             .ride-list {
                 padding-bottom: env(safe-area-inset-bottom, 0px);
             }
 
             .legend {
-                bottom: calc(var(--sheet-peek) + 12px);
+                bottom: calc(var(--sheet-peek) + 10px);
                 right: 10px;
+                opacity: 0.5;
+            }
+            .legend.hidden {
+                opacity: 0;
+                pointer-events: none;
             }
 
+            /* Controls: safe area aware, never clip off screen */
             .map-ctrls {
-                top: 10px;
+                top: max(10px, env(safe-area-inset-top, 0px));
                 right: auto;
                 left: 10px;
             }
 
             .maplibregl-ctrl-top-right {
-                top: 10px !important;
+                top: max(10px, env(safe-area-inset-top, 0px)) !important;
                 right: 10px !important;
             }
         }

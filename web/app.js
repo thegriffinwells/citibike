@@ -234,7 +234,7 @@ function initMap() {
         container: 'map',
         style: 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json',
         center: [-73.955, 40.695],
-        zoom: 13,
+        zoom: 14,
         attributionControl: false,
         maxPitch: 0,
         dragRotate: false,
@@ -254,7 +254,10 @@ function initMap() {
             return;
         }
         if (focusedRideIdx >= 0) unfocusRide();
-        if (IS_MOBILE()) document.getElementById('sidebar').classList.remove('expanded');
+        if (IS_MOBILE()) {
+            document.getElementById('sidebar').classList.remove('expanded');
+            updateLegendVisibility();
+        }
     });
 }
 
@@ -634,6 +637,13 @@ function resetView() {
     fitBounds();
 }
 
+function updateLegendVisibility() {
+    const legend = document.querySelector('.legend');
+    if (!legend || !IS_MOBILE()) return;
+    const expanded = document.getElementById('sidebar').classList.contains('expanded');
+    legend.classList.toggle('hidden', expanded);
+}
+
 function toggleSidebar() {
     const sidebar = document.getElementById('sidebar');
     if (IS_MOBILE()) {
@@ -641,6 +651,7 @@ function toggleSidebar() {
     } else {
         sidebar.classList.toggle('collapsed');
     }
+    updateLegendVisibility();
 }
 
 function closeSidebar() {
@@ -650,10 +661,14 @@ function closeSidebar() {
     } else {
         sidebar.classList.add('collapsed');
     }
+    updateLegendVisibility();
 }
 
 function openSheet() {
-    if (IS_MOBILE()) document.getElementById('sidebar').classList.add('expanded');
+    if (IS_MOBILE()) {
+        document.getElementById('sidebar').classList.add('expanded');
+        updateLegendVisibility();
+    }
 }
 
 // ═══════════════ Sheet Drag (mobile) ═══════════════
@@ -676,7 +691,7 @@ function initSheetDrag() {
         const dy = e.touches[0].clientY - startY;
         const isExpanded = sidebar.classList.contains('expanded');
         const sheetH = sidebar.offsetHeight;
-        const peek = 220; // matches mobile --sheet-peek
+        const peek = 130; // matches mobile --sheet-peek
         const base = isExpanded ? 0 : (sheetH - peek);
         const clamped = Math.max(0, Math.min(sheetH - peek, base + dy));
         sidebar.style.transform = `translateY(${clamped}px)`;
@@ -698,6 +713,7 @@ function initSheetDrag() {
         } else if (dy < -60) {
             sidebar.classList.add('expanded');
         }
+        updateLegendVisibility();
     }, { passive: true });
 }
 
